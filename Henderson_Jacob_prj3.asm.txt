@@ -1,0 +1,681 @@
+# Name: Jake Henderson
+# Student ID: 23212659
+
+.data
+generated:			.word 0, 0, 0, 0, 0, 0    
+input:				.word 0, 0, 0, 0, 0, 0, 0
+matches:			.word 0, 0, 0, 0, 0, 0
+user_input: .asciiz		"Please give 7 numbers from 1-45(separated by spaces): "
+user_drawing: .asciiz		"\nHow many drawings would you like to have between 1-100?: "
+count_msg: .asciiz		"Matching ["
+semicolon: .asciiz		": ["
+generated_nums: .asciiz 	"Drawing "
+input_nums: .asciiz		"Input numbers: ["
+generated_end: .asciiz		"]: "
+winner:	.asciiz			"You won "
+end: .asciiz			" game(s)!"
+newline: .asciiz		"\n"
+comma_space: .asciiz		", "
+all_match_msg: .asciiz 		"]. All matches! 1st prize!!! :)\n"
+bonus_prize_msg: .asciiz 	"] and bonus [" 
+bonus_prize_cont: .asciiz	"]2nd prize!! :)\n"
+third_prize_msg: .asciiz 	"]. 3rd prize! :)\n"
+fourth_prize_msg: .asciiz 	"]. 4th prize! :)\n"
+fifth_prize_msg: .asciiz 	"]. 5th prize! :)\n"
+lose_msg: .asciiz 		"]. Lose :(\n"
+no_match_msg: .asciiz 		"No matching numbers. Lose :(\n"	
+error: .asciiz			"Invalid input. Please try again!\n"
+buffer: .space 64		# Allocate 64 bytes for the input buffer
+
+
+.globl main 
+
+.text 		
+
+
+main:
+	la $a0, generated	#generated array
+	la $a1, input		#input array
+	la $a2, matches		#matches array
+	li $a3, 6		#cnt=6
+	li $t0, 0		#wins
+	li $t2, 0		#match_count
+	li $t3, 1		#I=1 for loop generated
+	li $t4, 0		#bonus_match
+	li $t6, 0		#drawing_num
+	li $t7, 1 		#drawing_count
+	
+	move $s0, $a0
+	
+	li $t3, 0                 # Counter i = 0
+    	la $a1, input             # Base of input array
+    	li $t1, 0
+	jal read_user_input
+	
+	la $a0, input_nums
+    	li $v0, 4
+    	syscall
+    	li $t3, 0
+    	
+    	la $s0, input        # Load address of input into $a0
+    	lw $a0, 0($s0)       # Load value at input[0] (address in $a0) into $a0
+    	li $v0, 1            # Syscall for printing an integer
+    	syscall              # Make the syscall to print the integer
+    	
+    	li $t3, 0
+	jal print_input
+	
+	la $a0, generated_end
+    	li $v0, 4
+    	syscall
+	
+	j drawing
+
+read_user_input:
+	addi $sp, $sp, -4   # Move the stack pointer down by 4 bytes
+	sw $ra, 0($sp)      # Store the value in $t0 at the top of the stack	
+	la $a0, user_input
+	li $v0, 4
+	syscall
+
+read_input_loop:
+   	bge $t3, 7, read_done     # Exit if 7 numbers entered
+
+   	li $v0, 8
+	la $a0, buffer        # Load address of the buffer to store the string
+    	li $a1, 64            # Maximum number of characters to read
+	syscall
+	
+	li $t5, 0
+	la $s0, buffer
+
+parse_loop:
+    	lb $t6, 0($s0)         # Load the byte from the string into $t6
+    	beqz $t6, read_done    # If it's null terminator, end the loop
+    	
+    	li $t4, 32             # ASCII value of space
+    	beq $t6, $t4, space  
+	
+	subi $t6, $t6, 48
+    	
+    	addi $t2, $s0, 1       # Calculate address of the next byte
+    	lb $t9, 0($t2)         # Peek at next byte for second digit
+    	
+    	li $t7, 48              # ASCII '0'
+    	li $t8, 57              # ASCII '9'
+    	blt $t9, $t7, store_int
+    	bgt $t9, $t8, store_int
+    	
+    	mul $t6, $t6, 10        # Multiply by 10 (shift to left place)
+
+    	sub $t9, $t9, 48        # Convert to number
+    	add $t6, $t6, $t9       # Add second digit to current number
+  	addi $s0, $s0, 1
+
+store_int:
+	jal check_range
+	
+	la $a1, input
+	
+	beq $t5, 0, store_char1 	# If counter is 0, store in char1
+    	beq $t5, 1, store_char2 	# If counter is 1, store in char2
+    	beq $t5, 2, store_char3 	# If counter is 2, store in char3  
+	beq $t5, 3, store_char4 	# If counter is 3, store in char4
+    	beq $t5, 4, store_char5 	# If counter is 4, store in char5
+    	beq $t5, 5, store_char6 	# If counter is 5, store in char6 
+ 	beq $t5, 6, store_bonus 	# If counter is 6, store in bonus 
+
+store_char1:	
+	sw $t6, 0($a1)
+	addi $t5, $t5, 1
+	addi $s0, $s0, 1
+	j parse_loop
+	
+store_char2:
+	sw $t6, 4($a1)
+	addi $t5, $t5, 1
+	addi $s0, $s0, 1
+	j parse_loop
+	
+store_char3:
+	sw $t6, 8($a1)
+	addi $t5, $t5, 1
+	addi $s0, $s0, 1
+	j parse_loop
+
+store_char4:
+	sw $t6, 12($a1)
+	addi $t5, $t5, 1
+	addi $s0, $s0, 1
+	j parse_loop
+
+store_char5:
+	sw $t6, 16($a1)
+	addi $t5, $t5, 1
+	addi $s0, $s0, 1
+	j parse_loop
+
+store_char6:
+	sw $t6, 20($a1)
+	addi $t5, $t5, 1
+	addi $s0, $s0, 1
+	j parse_loop
+
+store_bonus:
+	sw $t6, 24($a1)
+	j read_done
+
+check_range:
+    	li $t7, 1           
+    	li $t8, 45      
+	 
+    	blt $t6, $t7, invalid_input
+    	bgt $t6, $t8, invalid_input
+    	jr $ra
+
+invalid_input:
+    	la $a0, error             # Print error message
+    	li $v0, 4
+    	syscall
+    	j read_user_input
+    	
+space:
+	addi $s0, $s0, 1
+	j parse_loop
+
+read_done:
+	lw $ra, 0($sp)      # Store the value in $t0 at the top of the stack
+	addi $sp, $sp, 4   # Move the stack pointer down by 4 bytes	
+	jr $ra
+
+print_input:
+    	bge $t3, $a3, print_input_end   # Exit if i >= cnt
+
+	# Print ", "
+    	la $a0, comma_space
+    	li $v0, 4
+    	syscall
+
+    	la $a1, input     	# Base address of input array
+    	sll $t8, $t3, 2       # Offset = i * 4
+    	add $t8, $a1, $t8     # Address of input[i]
+    	lw $a0, 4($t8)        # Load input[i] into $a1
+    
+    	li $v0, 1             # Print integer syscall
+    	syscall
+
+    	addi $t3, $t3, 1      # Increment i
+    	j print_input     	# Continue loop
+	
+print_input_end:
+	jr $ra
+	
+drawing:
+	la $a0, user_drawing
+	li $v0, 4
+	syscall
+	
+	li $v0, 5                 
+    	syscall	
+	move $s2, $v0             #drawing_num
+   
+    	li $t0, 0           # $t0 = wins (reset)
+    	li $t7, 1
+    	la $a2, matches     # load address of matches array
+    	li $t2, 0           # match_count reset
+    	li $t4, 0           # bonus_match reset
+
+drawing_loop_start:
+	bgt $t7, $s2, drawing_loop_end
+	
+	# Print "Drawing %d: "
+    	la $a0, generated_nums
+    	li $v0, 4                    # Print string syscall
+    	syscall
+    	move $a0, $t7                # Argument = drawing_count
+    	li $v0, 1                    # Print integer syscall
+    	syscall
+    	la $a0, semicolon
+    	li $v0, 4                    # Print string syscall
+    	syscall
+	
+	la $a0, generated
+	la $a3, 6            # $a3 = cnt = 6 (parameter for generate)
+	jal generate
+	
+	la $a0, generated
+	la $a3, 6            # $a3 = cnt = 6 (parameter for generate)
+	jal sort
+	
+	la $a0, generated
+	lw $t4, 0($a0)               # generated[0]
+    	move $a0, $t4
+    	li $v0, 1
+    	syscall
+    	
+    	li $t3, 1
+	la $a3, 6
+	jal print_generated
+    	
+	j prizes
+	
+drawing_loop_end:
+	# Print total wins
+    	la $a0, winner
+    	li $v0, 4
+    	syscall
+    	move $a0, $t0
+    	li $v0, 1
+    	syscall
+    	la $a0, end
+    	li $v0, 4
+    	syscall
+    	li $v0, 10
+    	syscall
+
+generate:
+    	addi $sp, $sp, -4         # Create space on the stack
+    	sw $ra, 0($sp)            # Save return address
+    
+    	li $t3, 0                  # i = 0 (initialize counter)
+    	li $t1, 0                  # num = 0 (generated number)
+    	li $a3, 6
+    	move $s0, $a3
+
+while:
+	bge $t3, $s0, gen_end	# if i >= cnt then get out of loop and go to find
+
+get_random:
+	li $v0, 42		# Random int syscall
+	li $a0, 1	 	# where min is 1
+	li $a1, 45		# where max is 45
+	syscall
+	
+	addi $t1, $a0, 1        # num = random_number + 1
+	
+	# Ensure the generated number is not 0
+	beqz $t1, get_random
+	
+	la $a0, generated
+	move $s1, $t1
+    	jal find                   # Call the 'find' function
+	bne $v0, -1, regen
+	j create
+	
+regen:
+	addi $t3, $t3, 1
+	j while
+	
+create:
+	la $a0, generated
+	sll $t4, $t3, 2         # Calculate offset (i * 4)
+	add $t4, $a0, $t4       # Get address of generated[i]
+	sw $s1, 0($t4)          # Store the random number in generated
+	
+	lw $a0, 0($t4)             # Load the random number into $a0
+    	
+	addi $t3, $t3, 1
+	j while
+
+gen_end:
+    	lw $ra, 0($sp)     	                          
+	addi $sp, $sp, 4         
+	jr $ra
+	
+sort:
+	li $t8, 0	#outside i
+	addi $sp, $sp, -4
+	sw $t0, 0($sp)     	                            
+	li $t2, 0
+	li $t3, 0
+	li $t4, 0
+	li $t5, 0
+	
+sort_outside:
+	subi $t9, $a3, 1
+	bge $t8, $t9, sort_done
+	
+	addi $t5, $t8, 1   	#j = i + 1
+	la $a0, generated
+	
+sort_inside:	
+	bge $t5, $a3, sort_outside_incr
+
+	sll $t3, $t8, 2        # i * 4 (offset for generated[i])
+    	sll $t4, $t5, 2        # j * 4 (offset for generated[j])
+
+    	add $t3, $a0, $t3      # $t6 = &generated[i]
+    	add $t4, $a0, $t4      # $t7 = &generated[j]
+
+    	lw $t1, 0($t3)         # $t1 = generated[i]
+    	lw $t2, 0($t4)         # $t2 = generated[j]
+    	
+	ble $t1, $t2, sort_inside_incr
+
+	move $t0, $t1          # temp = generated[i]
+    	sw $t2, 0($t3)         # generated[i] = generated[j]
+    	sw $t0, 0($t4)         # generated[j] = temp	
+
+sort_inside_incr:
+	addi $t5, $t5, 1       
+    	j sort_inside 
+
+sort_outside_incr:
+	addi $t8, $t8, 1       
+    	j sort_outside
+
+sort_done:
+	lw $t0, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+print_generated:
+	addi $sp, $sp, -4         # Create space on the stack
+    	sw $ra, 0($sp)            # Save return address
+    	bge $t3, $a3, print_gen_end   # Exit if i >= cnt
+
+	# Print ", "
+    	la $a0, comma_space
+    	li $v0, 4
+    	syscall
+
+    	la $a0, generated     # Base address of generated array
+    	sll $t8, $t3, 2       # Offset = i * 4
+    	add $t8, $a0, $t8     # Address of generated[i]
+    	lw $a0, 0($t8)        # Load generated[i] into $a0
+    
+    	li $v0, 1             # Print integer syscall
+    	syscall
+
+    	addi $t3, $t3, 1      # Increment i
+    	j print_generated     # Continue loop
+
+print_gen_end:
+	# Print "]: "
+    	la $a0, generated_end
+   	li $v0, 4
+   	syscall
+   	
+   	lw $ra, 0($sp)     	                          
+	addi $sp, $sp, 4  
+   	jr $ra
+
+check_matches:
+	addi $sp, $sp, -8   # Move the stack pointer down by 4 bytes
+	sw $t6, 0($sp)      # Store the value in $t0 at the top of the stack
+	sw $t7, 4($sp)      # Store the value in $t0 at the top of the stack
+	
+	li $t2, 0	#match_count = 0
+	li $t3, 0	#i
+	la $a3, 6
+	la $a0, generated
+	la $a1, input
+	la $a2, matches
+	
+
+matches_outside:
+	bge $t3, $a3, matches_done
+	li $t8, 0	#j
+	
+matches_inside:	
+	bge $t8, 6, matches_outside_incr
+	
+    	sll $t9, $t3, 2       # Offset = i * 4
+    	add $t9, $a0, $t9     # Address of generated[i]
+    	lw $s0, 0($t9)        # Load generated[i] into $a0
+    	
+    	sll $t7, $t8, 2       # Offset = j * 4
+    	add $t7, $a1, $t7     # Address of input[j]
+    	lw $s1, 0($t7)        # Load input[j] into $a1
+
+	bne $s0, $s1, matches_inside_incr
+
+	sll $t5, $t2, 2        # match_count * 4 (offset for matches[])
+    	add $t5, $a2, $t5      # $t3 = &matches[match_count]
+    	sw $s0, 0($t5)         # matches[match_count] = generated[i]
+
+	addi $t2, $t2, 1
+	
+matches_inside_incr:
+	addi $t8, $t8, 1
+	j matches_inside
+
+matches_outside_incr:
+	addi $t3, $t3, 1
+	j matches_outside
+
+matches_done:
+	lw $t7, 4($sp)  
+	lw $t6, 0($sp)      # Store the value in $t0 at the top of the stack    
+	addi $sp, $sp, 8
+	move $v0, $t2   
+	jr $ra
+	
+print_matches:
+    	bgt $t3, $t2, print_matches_end   # Exit if i >= cnt
+
+	# Print ", "
+    	la $a0, comma_space
+    	li $v0, 4
+    	syscall
+
+    	la $a2, matches     	# Base address of input array
+    	sll $t8, $t3, 2       # Offset = i * 4
+    	add $t8, $a2, $t8     # Address of input[i]
+    	lw $a0, 4($t8)        # Load input[i] into $a1
+    
+    	li $v0, 1             # Print integer syscall
+    	syscall
+
+    	addi $t3, $t3, 1      # Increment i
+    	j print_matches     	# Continue loop
+	
+print_matches_end:
+	jr $ra
+
+check_bonus:
+	addi $sp, $sp, -8   # Move the stack pointer down by 4 bytes
+	sw $t6, 4($sp)      # Store the value in $t0 at the top of the stack
+	sw $t7, 0($sp)      # Store the value in $t0 at the top of the stack
+	li $t3, 0
+	la $a3, 6
+	la $a0, generated
+	la $a1, input
+	
+	# Load input[6] (the bonus number)
+    	li $t5, 6              # Index 6
+    	sll $t6, $t5, 2        # 6 * 4 (byte offset for input[6])
+    	add $t6, $a1, $t6      # $t6 = address of input[6]
+    	lw $t4, 0($t6)         # $t4 = input[6] (bonus number)
+	
+bonus_loop:
+	bge $t3, $a3, bonus_not_found
+	
+	la $a0, generated     # Base address of generated array
+    	sll $t9, $t3, 2       # Offset = i * 4
+    	add $t9, $a0, $t9     # Address of generated[i]
+    	lw $a0, 0($t9)        # Load generated[i] into $a0
+	
+	beq $t4, $a0, bonus_found
+	
+	addi $t3, $t3, 1
+	j bonus_loop
+
+bonus_not_found:
+    	lw $t7, 0($sp)   
+    	lw $t6, 4($sp)      # Store the value in $t0 at the top of the stack   
+	addi $sp, $sp, 4  
+	li $v0, 0              # Return 0 (no match found)
+    	jr $ra                 
+
+bonus_found:
+    	lw $t7, 0($sp)   
+    	lw $t6, 4($sp)      # Store the value in $t0 at the top of the stack   
+	addi $sp, $sp, 4
+	move $v0, $a0
+    	jr $ra   
+
+prizes:
+	la $a0, generated
+    	la $a1, input
+    	la $a2, matches
+    	li $a3, 6                    
+    	jal check_matches
+    	move $t2, $v0			# t2 = match_count
+
+    	la $a0, generated
+    	la $a1, input
+    	li $a2, 6                    
+    	jal check_bonus
+    	move $t4, $a0                # $t4 = bonus_match
+    
+	li $t5, 6                    
+    	beq $t2, $t5, first_prize
+
+    	li $t5, 5
+    	beq $t2, $t5, five_matches
+
+    	li $t5, 4
+    	beq $t2, $t5, fourth_prize
+
+    	li $t5, 3
+    	beq $t2, $t5, fifth_prize
+
+    	li $t5, 2
+    	beq $t2, $t5, low_prize
+    	
+    	li $t5, 1
+    	beq $t2, $t5, low_prize
+
+    	la $a0, no_match_msg
+    	li $v0, 4
+    	syscall
+    	j next_drawing 
+
+first_prize:
+	la $a0, count_msg
+    	li $v0, 4                    # Print string syscall
+    	syscall
+    	la $a0, all_match_msg
+    	li $v0, 4
+    	syscall
+    	addi $t0, $t0, 1             # Increment wins
+    	j next_drawing
+
+five_matches:
+	la $a0, count_msg
+    	li $v0, 4                    # Print string syscall
+    	syscall
+    	la $a2, matches        # Load address of input into $a0
+    	lw $a0, 0($a2)       # Load value at input[0] (address in $a0) into $a0
+    	li $v0, 1            # Syscall for printing an integer
+    	syscall              # Make the syscall to print the integer
+    	jal print_matches
+    	bne $t4, 0, bonus_prize     # If bonus_match == 1
+    	la $a0, third_prize_msg
+    	li $v0, 4
+    	syscall
+    	addi $t0, $t0, 1             # Increment wins
+    	j next_drawing
+
+bonus_prize:
+    	la $a0, bonus_prize_msg
+    	li $v0, 4
+    	syscall
+    	move $a0, $t4
+    	li $v0, 1
+    	syscall
+    	la $a0, bonus_prize_cont
+    	li $v0, 4
+    	syscall
+    	addi $t0, $t0, 1
+    	j next_drawing
+
+fourth_prize:
+	la $a0, count_msg
+    	li $v0, 4                    # Print string syscall
+    	syscall
+    	la $a2, matches        # Load address of input into $a0
+    	lw $a0, 0($a2)       # Load value at input[0] (address in $a0) into $a0
+    	li $v0, 1            # Syscall for printing an integer
+    	syscall              # Make the syscall to print the integer
+    	jal print_matches
+    	la $a0, fourth_prize_msg
+    	li $v0, 4
+    	syscall
+    	addi $t0, $t0, 1
+    	j next_drawing
+
+fifth_prize:
+	la $a0, count_msg
+    	li $v0, 4                    # Print string syscall
+    	syscall
+    	la $a2, matches        # Load address of input into $a0
+    	lw $a0, 0($a2)       # Load value at input[0] (address in $a0) into $a0
+    	li $v0, 1            # Syscall for printing an integer
+    	syscall              # Make the syscall to print the integer
+    	jal print_matches
+    	la $a0, fifth_prize_msg
+    	li $v0, 4
+    	syscall
+    	addi $t0, $t0, 1
+    	j next_drawing
+    	
+low_prize:
+	li $t9, 1
+	beq $t2, 1, last_prize
+	la $a0, count_msg
+    	li $v0, 4                    # Print string syscall
+    	syscall
+    	la $a2, matches        # Load address of input into $a0
+    	lw $a0, 0($a2)       # Load value at input[0] (address in $a0) into $a0
+    	li $v0, 1            # Syscall for printing an integer
+    	syscall              # Make the syscall to print the integer
+    	# Print ", "
+    	la $a0, comma_space
+    	li $v0, 4
+    	syscall
+    	la $a2, matches        # Load address of input into $a0
+    	lw $a0, 4($a2)       # Load value at input[0] (address in $a0) into $a0
+    	li $v0, 1            # Syscall for printing an integer
+    	syscall              # Make the syscall to print the integer
+    	la $a0, lose_msg
+    	li $v0, 4
+    	syscall
+    	j next_drawing
+
+last_prize:
+	la $a0, count_msg
+    	li $v0, 4                    # Print string syscall
+    	syscall
+    	la $a2, matches        # Load address of input into $a0
+    	lw $a0, 0($a2)       # Load value at input[0] (address in $a0) into $a0
+    	li $v0, 1            # Syscall for printing an integer
+    	syscall              # Make the syscall to print the integer
+    	la $a0, lose_msg
+    	li $v0, 4
+    	syscall
+
+next_drawing:
+    	addi $t7, $t7, 1             # Increment drawing_count
+    	j drawing_loop_start
+
+find:
+	la $a0, generated
+	li $t8, 0
+	li $v0, -1
+	
+find_loop_start:
+	bge $t8, $a3, find_loop_end
+	sll $t9, $t8, 2
+	add $t9, $t9, $a0
+	lw  $t9, 0($t9)
+	beq $t9, $s1, find_loop_found
+	addi $t8, $t8, 1
+	j find_loop_start
+
+find_loop_found:
+	addi $v0, $t8, 0
+
+find_loop_end:
+	jr $ra
